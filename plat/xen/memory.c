@@ -160,7 +160,9 @@ int _ukplat_mem_mappings_init(void)
 
 void ukplat_stack_set_current_thread(void *thread_addr)
 {
+#if defined(__arm__)
 	/* TODO revisit for HVM */
 	extern char irqstack[];
 	*((unsigned long *) irqstack) = (unsigned long) thread_addr;
+#endif
 }
