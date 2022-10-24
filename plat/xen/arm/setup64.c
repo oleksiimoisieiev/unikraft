@@ -25,20 +25,22 @@
 /* Ported from Mini-OS */
 
 #include <arm/smccc.h>
-#include <string.h>
-#include <uk/plat/common/sections.h>
 #include <xen-arm/os.h>
 #include <xen-arm/mm.h>
+#include <common/events.h>
+#include <common/console.h>
 #include <xen/xen.h>
+#include <uk/plat/memory.h>
 #include <xen/memory.h>
 #include <xen/hvm/params.h>
-#include <common/events.h>
 #include <libfdt.h>
-#include <uk/plat/bootstrap.h>
-#include <uk/plat/memory.h>
-#include <uk/config.h>
-#include <uk/assert.h>
-#include <uk/essentials.h>
+#include <xen-arm/setup.h>
+
+/*
+ * This structure contains start-of-day info, such as pagetable base pointer,
+ * address of the shared_info structure, and things like that.
+ * On x86, the hypervisor passes it to us. On ARM, we fill it in ourselves.
+ */
 
 /*
  * Shared page for communicating with the hypervisor.
@@ -46,15 +48,19 @@
  */
 shared_info_t *HYPERVISOR_shared_info;
 
-/*
- * Device tree
- */
-void *HYPERVISOR_dtb;
+union start_info_union start_info_union;
 
+extern char shared_info_page[PAGE_SIZE];
+extern lpae_t boot_l1_pgtable[512];
+extern lpae_t fixmap_pgtable[512];
+
+void *HYPERVISOR_dtb;
 /*
  * Physical address offset
  */
-uint32_t _libxenplat_paddr_offset;
+paddr_t _libxenplat_paddr_offset;
+
+smccc_conduit_fn_t smccc_psci_call;
 
 /*
  * Memory region description
@@ -63,7 +69,27 @@ uint32_t _libxenplat_paddr_offset;
 unsigned int _libxenplat_mrd_num;
 struct ukplat_memregion_desc _libxenplat_mrd[UKPLAT_MEMRD_MAX_ENTRIES];
 
-smccc_conduit_fn_t smccc_psci_call;
+static inline void set_pgt_entry(lpae_t *ptr, lpae_t val)
+{
+	*ptr = val;
+	dsb(ishst);
+	isb();
+}
+
+static int hvm_get_parameter(int idx, uint64_t *value)
+{
+	struct xen_hvm_param xhv;
+	int ret;
+
+	xhv.domid = DOMID_SELF;
+	xhv.index = idx;
+	ret = HYPERVISOR_hvm_op(HVMOP_get_param, &xhv);
+	if (ret < 0)
+		BUG();
+
+	*value = xhv.value;
+	return ret;
+}
 
 /*
  * Command line handling
@@ -71,13 +97,87 @@ smccc_conduit_fn_t smccc_psci_call;
 #define MAX_CMDLINE_SIZE 1024
 static char cmdline[MAX_CMDLINE_SIZE];
 
-static inline void _init_dtb(void *dtb_pointer)
+static xen_pfn_t map_console(xen_pfn_t mfn)
 {
-	int ret;
+	paddr_t phys;
 
-	if ((ret = fdt_check_header(dtb_pointer)))
-		UK_CRASH("Invalid DTB: %s\n", fdt_strerror(ret));
-	HYPERVISOR_dtb = dtb_pointer;
+	phys = PFN_PHYS(mfn);
+	uk_pr_debug("%s, phys = 0x%lx\n", __func__, phys);
+
+	set_pgt_entry(&fixmap_pgtable[l2_pgt_idx(FIX_CON_START)],
+				  ((phys & L2_MASK) | BLOCK_DEV_ATTR | L2_BLOCK));
+
+	return (xen_pfn_t) (FIX_CON_START + (phys & L2_OFFSET));
+}
+
+static xen_pfn_t map_xenbus(xen_pfn_t mfn)
+{
+	paddr_t phys;
+
+	phys = PFN_PHYS(mfn);
+	uk_pr_debug("%s, phys = 0x%lx\n", __func__, phys);
+
+	set_pgt_entry(&fixmap_pgtable[l2_pgt_idx(FIX_XS_START)],
+				  ((phys & L2_MASK) | BLOCK_DEV_ATTR | L2_BLOCK));
+
+	return (xen_pfn_t) (FIX_XS_START + (phys & L2_OFFSET));
+}
+
+static void get_console(void)
+{
+	uint64_t v = -1;
+
+	hvm_get_parameter(HVM_PARAM_CONSOLE_EVTCHN, &v);
+	HYPERVISOR_start_info->console.domU.evtchn = v;
+
+	hvm_get_parameter(HVM_PARAM_CONSOLE_PFN, &v);
+#if defined(__aarch64__)
+	HYPERVISOR_start_info->console.domU.mfn = map_console(v);
+#else
+	HYPERVISOR_start_info->console.domU.mfn = v;
+#endif
+
+	uk_pr_debug("Console is on port %d\n",
+				HYPERVISOR_start_info->console.domU.evtchn);
+	uk_pr_debug("Console ring is at mfn %lx\n",
+				(unsigned long)HYPERVISOR_start_info->console.domU.mfn);
+}
+
+void get_xenbus(void)
+{
+	uint64_t value;
+
+	if (hvm_get_parameter(HVM_PARAM_STORE_EVTCHN, &value))
+		BUG();
+
+	HYPERVISOR_start_info->store_evtchn = (int)value;
+
+	if (hvm_get_parameter(HVM_PARAM_STORE_PFN, &value))
+		BUG();
+#if defined(__aarch64__)
+	HYPERVISOR_start_info->store_mfn = map_xenbus(value);
+#else
+	HYPERVISOR_start_info->store_mfn = value;
+#endif
+	uk_pr_debug("xenbus mfn(pfn?) = %lx\n",
+				HYPERVISOR_start_info->store_mfn);
+}
+
+/*
+ * Map device_tree (paddr) to FIX_FDT_START (vaddr)
+ */
+static void *map_fdt(paddr_t device_tree)
+{
+	/*
+	 * FIXME: To deal with the 2M alignment, only 4KB space is usable
+	 * because device_tree is aligned to a (2M - 4KB) address.
+	 */
+	set_pgt_entry(&boot_l1_pgtable[l1_pgt_idx(FIX_FDT_START)],
+				  (to_phys(fixmap_pgtable) | L1_TABLE));
+	set_pgt_entry(&fixmap_pgtable[l2_pgt_idx(FIX_FDT_START)],
+				  ((device_tree & L2_MASK) | BLOCK_DEF_ATTR | L2_BLOCK));
+
+	return (void *)(FIX_FDT_START + (device_tree & L2_OFFSET));
 }
 
 static inline void _dtb_get_cmdline(char *cmdline, size_t maxlen)
@@ -96,7 +196,7 @@ static inline void _dtb_get_cmdline(char *cmdline, size_t maxlen)
 	strncpy(cmdline, fdtcmdline, MIN(maxlen, (unsigned int) len));
 	/* ensure null termination */
 	cmdline[((unsigned int) len - 1) <= (maxlen - 1) ?
-		((unsigned int) len - 1) : (maxlen - 1)] = '\0';
+			((unsigned int) len - 1) : (maxlen - 1)] = '\0';
 
 	return;
 
@@ -105,7 +205,7 @@ enocmdl:
 	strcpy(cmdline, CONFIG_UK_NAME);
 }
 
-static inline void _dtb_init_mem(uint32_t physical_offset)
+static inline void _dtb_init_mem(paddr_t physical_offset)
 {
 	int memory;
 	int prop_len = 0;
@@ -127,8 +227,9 @@ static inline void _dtb_init_mem(uint32_t physical_offset)
 		uk_pr_warn("Reserved memory is not supported\n");
 
 	memory = fdt_node_offset_by_prop_value(HYPERVISOR_dtb, -1,
-					       "device_type",
-					       "memory", sizeof("memory"));
+										   "device_type",
+										   "memory",
+										   sizeof("memory"));
 	if (memory < 0) {
 		uk_pr_warn("No memory found in DTB\n");
 		return;
@@ -154,14 +255,14 @@ static inline void _dtb_init_mem(uint32_t physical_offset)
 	heap_len = mem_size - (PFN_PHYS(start_pfn_p) - mem_base);
 	max_pfn_p = start_pfn_p + PFN_DOWN(heap_len);
 	uk_pr_info("    heap start: %p\n",
-		   to_virt(start_pfn_p << __PAGE_SHIFT));
+			   to_virt(start_pfn_p << __PAGE_SHIFT));
 
 	/* The device tree is probably in memory that we're about to hand over
 	 * to the page allocator, so move it to the end and reserve that space.
 	 */
 	fdt_size = fdt_totalsize(HYPERVISOR_dtb);
 	new_dtb = to_virt(((max_pfn_p << __PAGE_SHIFT) - fdt_size)
-			  & __PAGE_MASK);
+					  & __PAGE_MASK);
 	if (new_dtb != HYPERVISOR_dtb)
 		memmove(new_dtb, HYPERVISOR_dtb, fdt_size);
 	HYPERVISOR_dtb = new_dtb;
@@ -181,46 +282,57 @@ static inline void _dtb_init_mem(uint32_t physical_offset)
 	_libxenplat_mrd[1].base  = HYPERVISOR_dtb;
 	_libxenplat_mrd[1].len   = fdt_size;
 	_libxenplat_mrd[1].flags = (UKPLAT_MEMRF_RESERVED
-				    | UKPLAT_MEMRF_READABLE);
+								| UKPLAT_MEMRF_READABLE);
 #if CONFIG_UKPLAT_MEMRNAME
 	_libxenplat_mrd[1].name  = "dtb";
 #endif
 	_libxenplat_mrd_num = 2;
 }
 
-void _libxenplat_armentry(void *dtb_pointer,
-			  uint32_t physical_offset) __noreturn;
-
-**void _libxenplat_armentry(void *dtb_pointer, uint32_t physical_offset)
+/*
+ * INITIAL C ENTRY POINT.
+ */
+void _libxenplat_armentry(void *dtb_pointer, paddr_t physical_offset)
 {
-	uk_pr_info("Entering from Xen (arm)...\n");
+	struct xen_add_to_physmap xatp;
+	int r;
 
-	/* Zero'ing out the bss section */
-	/*
-	 * TODO: It probably makes sense to move this to the early
-	 * platform entry assembly code.
-	 */
 	memset(__bss_start, 0, _end - __bss_start);
 
-	_init_dtb(dtb_pointer);
+	_libxenplat_paddr_offset = physical_offset;
+
+	dtb_pointer = map_fdt((paddr_t) dtb_pointer);
+
+	uk_pr_debug("Checking DTB at %p...\n", dtb_pointer);
+
+	if ((r = fdt_check_header(dtb_pointer))) {
+		uk_pr_debug("Invalid DTB from Xen: %s\n", fdt_strerror(r));
+		BUG();
+	}
+	HYPERVISOR_dtb = dtb_pointer;
+
 	_dtb_init_mem(physical_offset); /* relocates dtb */
-	uk_pr_info("           dtb: %p\n", HYPERVISOR_dtb);
+
+	/* Map shared_info page */
+	xatp.domid = DOMID_SELF;
+	xatp.idx = 0;
+	xatp.space = XENMAPSPACE_shared_info;
+	xatp.gpfn = virt_to_pfn(shared_info_page);
+	if (HYPERVISOR_memory_op(XENMEM_add_to_physmap, &xatp) != 0)
+		BUG();
+	HYPERVISOR_shared_info = (struct shared_info *)shared_info_page;
 
 	/* Set up events. */
-	//init_events();
+	init_events();
 
-	/* ENABLE EVENT DELIVERY. This is disabled at start of day. */
-	// TODO //
+	/* Fill in start_info */
+	get_console();
+	get_xenbus();
 
+	prepare_console();
+	/* Init console */
+	init_console();
 	_dtb_get_cmdline(cmdline, sizeof(cmdline));
 
 	ukplat_entry_argp(CONFIG_UK_NAME, cmdline, sizeof(cmdline));
-}
-
-void _libxenplat_armpanic(int *saved_regs) __noreturn;
-
-void _libxenplat_armpanic(int *saved_regs __unused)
-{
-	/* TODO: dump registers */
-	ukplat_crash();
 }

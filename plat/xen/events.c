@@ -336,5 +336,6 @@ int ukplat_irq_init(struct uk_alloc *a __unused)
 	UK_ASSERT(ukplat_lcpu_irqs_disabled());
 
 	/* Nothing for now */
+    /* TODO amoi check if I need to move irq init from mini-os */
 	return 0;
 }
