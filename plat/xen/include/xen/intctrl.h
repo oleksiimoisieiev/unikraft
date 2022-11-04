@@ -2,7 +2,7 @@
 /*
  * Authors: Costin Lupu <costin.lupu@cs.pub.ro>
  *
- * Copyright (c) 2017, NEC Europe Ltd., NEC Corporation. All rights reserved.
+ * Copyright (c) 2018, NEC Europe Ltd., NEC Corporation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -30,52 +30,8 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <stdint.h>
-#if defined(__X86_32__) || defined(__x86_64__)
-#include <xen-x86/irq.h>
-#include <x86/cpu.h>
-#elif (defined __ARM_32__) || (defined __ARM_64__)
-#include <xen-arm/os.h>
-#include <arm/cpu.h>
-#include <uk/plat/common/irq.h>
-#else
-#error "Unsupported architecture"
-#endif
-#include <uk/plat/lcpu.h>
-#include <uk/plat/time.h>
-
-void ukplat_lcpu_enable_irq(void)
-{
-	local_irq_enable();
-}
-
-void ukplat_lcpu_disable_irq(void)
-{
-	local_irq_disable();
-}
-
-void ukplat_lcpu_halt_irq(void)
-{
-	ukplat_lcpu_enable_irq();
-	halt();
-	ukplat_lcpu_disable_irq();
-}
-
-unsigned long ukplat_lcpu_save_irqf(void)
-{
-	unsigned long flags;
-
-	local_irq_save(flags);
-
-	return flags;
-}
-
-void ukplat_lcpu_restore_irqf(unsigned long flags)
-{
-	local_irq_restore(flags);
-}
-
-int ukplat_lcpu_irqs_disabled(void)
-{
-	return irqs_disabled();
-}
+void intctrl_init(void);
+void intctrl_clear_irq(unsigned int irq);
+void intctrl_mask_irq(unsigned int irq);
+void intctrl_ack_irq(unsigned int irq);
+void intctrl_send_ipi(uint8_t sgintid, uint32_t cpuid);

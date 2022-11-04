@@ -100,29 +100,6 @@ static inline void local_irq_enable(void)
 	{                                                                      \
 		__asm__ __volatile__("mrs %0, cpsr" : "=r"(x)::"memory");      \
 	}
-#elif defined(__aarch64__)
-static inline void local_irq_disable(void)
-{
-    __asm__ __volatile__("msr daifset, #2": : :"memory");
-}
-
-static inline void local_irq_enable(void)
-{
-    __asm__ __volatile__("msr daifclr, #2": : :"memory");
-}
-
-#define local_irq_save(x) { \
-    __asm__ __volatile__("mrs %0, daif; msr daifset, #2":"=r"(x)::"memory"); \
-}
-
-#define local_irq_restore(x) { \
-    __asm__ __volatile__("msr daif, %0": :"r"(x):"memory"); \
-}
-
-#define local_save_flags(x) { \
-    __asm__ __volatile__("mrs %0, daif":"=r"(x): :"memory"); \
-}
-#endif /* __aarch64__ */
 
 static inline int irqs_disabled(void)
 {
@@ -131,6 +108,7 @@ static inline int irqs_disabled(void)
 	local_save_flags(x);
 	return x & 0x80;
 }
+#endif /* __arm__ */
 
 void block_domain(__snsec until);
 

@@ -1,8 +1,8 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /*
- * Authors: Costin Lupu <costin.lupu@cs.pub.ro>
+ * Authors: Wei Chen <wei.chen@arm.com>
  *
- * Copyright (c) 2017, NEC Europe Ltd., NEC Corporation. All rights reserved.
+ * Copyright (c) 2018, Arm Ltd., All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -29,53 +29,55 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
+/* Moved from Mini-OS */
 
-#include <stdint.h>
-#if defined(__X86_32__) || defined(__x86_64__)
-#include <xen-x86/irq.h>
-#include <x86/cpu.h>
-#elif (defined __ARM_32__) || (defined __ARM_64__)
-#include <xen-arm/os.h>
+#include <uk/assert.h>
+#include <xen/intctrl.h>
 #include <arm/cpu.h>
-#include <uk/plat/common/irq.h>
-#else
-#error "Unsupported architecture"
-#endif
-#include <uk/plat/lcpu.h>
-#include <uk/plat/time.h>
+#include <arm/irq.h>
+#include <gic/gic.h>
+#include <uk/essentials.h>
 
-void ukplat_lcpu_enable_irq(void)
+/** Corresponding driver for GIC present on the hardware */
+struct _gic_dev *gic;
+extern void *HYPERVISOR_dtb;
+
+void intctrl_init(void)
 {
-	local_irq_enable();
+	int rc;
+
+	/* Initialize GIC from DTB */
+	rc = _dtb_init_gic(HYPERVISOR_dtb, &gic);
+	if (unlikely(rc))
+		goto EXIT_ERR;
+
+	/* Initialize GIC */
+	rc = gic->ops.initialize();
+	if (unlikely(rc))
+		goto EXIT_ERR;
+
+	return;
+
+EXIT_ERR:
+	UK_CRASH("Initialize GIC from DTB failed (code: %d)!\n", rc);
 }
 
-void ukplat_lcpu_disable_irq(void)
+void intctrl_ack_irq(unsigned int irq __unused)
 {
-	local_irq_disable();
+	gic->ops.ack_irq();
 }
 
-void ukplat_lcpu_halt_irq(void)
+void intctrl_mask_irq(unsigned int irq)
 {
-	ukplat_lcpu_enable_irq();
-	halt();
-	ukplat_lcpu_disable_irq();
+	gic->ops.disable_irq(irq);
 }
 
-unsigned long ukplat_lcpu_save_irqf(void)
+void intctrl_clear_irq(unsigned int irq)
 {
-	unsigned long flags;
-
-	local_irq_save(flags);
-
-	return flags;
+	gic->ops.enable_irq(irq);
 }
 
-void ukplat_lcpu_restore_irqf(unsigned long flags)
+void intctrl_send_ipi(uint8_t sgintid, uint32_t cpuid)
 {
-	local_irq_restore(flags);
-}
-
-int ukplat_lcpu_irqs_disabled(void)
-{
-	return irqs_disabled();
+	gic->ops.gic_sgi_gen(sgintid, cpuid);
 }

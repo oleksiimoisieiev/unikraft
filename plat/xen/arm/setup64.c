@@ -32,9 +32,12 @@
 #include <xen/xen.h>
 #include <uk/plat/memory.h>
 #include <xen/memory.h>
+#include <xen/intctrl.h>
 #include <xen/hvm/params.h>
 #include <libfdt.h>
 #include <xen-arm/setup.h>
+#include <gic/gic.h>
+#include <uk/plat/common/lcpu.h>
 
 /*
  * This structure contains start-of-day info, such as pagetable base pointer,
@@ -207,13 +210,6 @@ enocmdl:
 
 static inline void _dtb_init_mem(paddr_t physical_offset)
 {
-	int memory;
-	int prop_len = 0;
-	const uint64_t *regs;
-	uintptr_t end;
-	uint64_t mem_base;
-	uint64_t mem_size;
-	uint64_t heap_len;
 	size_t fdt_size;
 	void *new_dtb;
 	paddr_t start_pfn_p;
@@ -222,40 +218,7 @@ static inline void _dtb_init_mem(paddr_t physical_offset)
 	/* init physical address offset gathered by entry32.S */
 	_libxenplat_paddr_offset = physical_offset;
 
-	/* search for assigned VM memory in DTB */
-	if (fdt_num_mem_rsv(HYPERVISOR_dtb) != 0)
-		uk_pr_warn("Reserved memory is not supported\n");
-
-	memory = fdt_node_offset_by_prop_value(HYPERVISOR_dtb, -1,
-										   "device_type",
-										   "memory",
-										   sizeof("memory"));
-	if (memory < 0) {
-		uk_pr_warn("No memory found in DTB\n");
-		return;
-	}
-
-	/* Xen will always provide us at least one bank of memory.
-	 * unikraft will use the first bank for the time-being.
-	 */
-	regs = fdt_getprop(HYPERVISOR_dtb, memory, "reg", &prop_len);
-	/* The property must contain at least the start address
-	 * and size, each of which is 8-bytes.
-	 */
-	if (regs == NULL && prop_len < 16)
-		UK_CRASH("Bad 'reg' property: %p %d\n", regs, prop_len);
-
-	end = (uintptr_t) __END;
-	mem_base = fdt64_to_cpu(regs[0]);
-	mem_size = fdt64_to_cpu(regs[1]);
-	if (to_virt(mem_base) > (void *)__TEXT)
-		UK_CRASH("Fatal: Image outside of RAM\n");
-
-	start_pfn_p = PFN_UP(to_phys(end));
-	heap_len = mem_size - (PFN_PHYS(start_pfn_p) - mem_base);
-	max_pfn_p = start_pfn_p + PFN_DOWN(heap_len);
-	uk_pr_info("    heap start: %p\n",
-			   to_virt(start_pfn_p << __PAGE_SHIFT));
+	arch_mm_prepare(&start_pfn_p, &max_pfn_p);
 
 	/* The device tree is probably in memory that we're about to hand over
 	 * to the page allocator, so move it to the end and reserve that space.
@@ -324,6 +287,13 @@ void _libxenplat_armentry(void *dtb_pointer, paddr_t physical_offset)
 
 	/* Set up events. */
 	init_events();
+
+	/* Initialize interrupt controller */
+	intctrl_init();
+	/* Initialize logical boot CPU */
+	r = lcpu_init(lcpu_get_bsp());
+	if (unlikely(r))
+		UK_CRASH("Failed to initialize bootstrapping CPU: %d\n", r);
 
 	/* Fill in start_info */
 	get_console();
