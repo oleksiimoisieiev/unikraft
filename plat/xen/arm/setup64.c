@@ -32,9 +32,12 @@
 #include <xen/xen.h>
 #include <uk/plat/memory.h>
 #include <xen/memory.h>
+#include <xen/intctrl.h>
 #include <xen/hvm/params.h>
 #include <libfdt.h>
 #include <xen-arm/setup.h>
+#include <gic/gic.h>
+#include <uk/plat/common/lcpu.h>
 
 /*
  * This structure contains start-of-day info, such as pagetable base pointer,
@@ -324,6 +327,13 @@ void _libxenplat_armentry(void *dtb_pointer, paddr_t physical_offset)
 
 	/* Set up events. */
 	init_events();
+
+	/* Initialize interrupt controller */
+	intctrl_init();
+	/* Initialize logical boot CPU */
+	r = lcpu_init(lcpu_get_bsp());
+	if (unlikely(r))
+		UK_CRASH("Failed to initialize bootstrapping CPU: %d\n", r);
 
 	/* Fill in start_info */
 	get_console();

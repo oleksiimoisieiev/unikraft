@@ -100,7 +100,6 @@ config FPSIMD
 
 menuconfig LIBGIC
 	bool "Arm GIC (generic interrupt controller) support"
-	select LIBOFW
 	default y if ARCH_ARM_64
 	depends on ARCH_ARM_64
 	depends on UKPLAT_ALLOW_GIC

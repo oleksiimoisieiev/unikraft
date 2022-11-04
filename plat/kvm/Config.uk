@@ -160,6 +160,7 @@ config RTC_PL031
 config LIBOFW
        bool "Open Firmware library support"
        default n
+       default y if LIBGIC
        depends on ARCH_ARM_64
        select LIBFDT
 

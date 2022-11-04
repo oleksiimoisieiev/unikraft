@@ -76,6 +76,10 @@ config XEN_GNTTAB
 	help
 		Support grant table operations
 
+config UKPLAT_ALLOW_GIC
+	bool
+	default y
+
 config XEN_XENBUS
 	bool "Xenbus/XenStore driver"
 	default y if XEN_PV
@@ -150,4 +154,20 @@ config XEN_9PFRONT_RING_ORDER
 		create rings of size 4K, 8K, 16K, ..., 2M respectively.
 		Will be clamped to the maximum value allowed by the backend.
 endmenu
+
+config LIBOFW
+	bool "Open Firmware library support"
+	default n
+	default y if LIBGIC
+	depends on ARCH_ARM_64
+	select LIBFDT
+
+config UKPLAT_ALLOW_GIC
+	bool
+	default y
+
+config XEN_MAX_IRQ_HANDLER_ENTRIES
+	int "Maximum number of handlers per IRQ"
+	default 8
+	depends on (ARCH_X86_64 || ARCH_ARM_64)
 endif

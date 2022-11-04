@@ -56,6 +56,13 @@ typedef int (*irq_handler_func_t)(void *);
  */
 int ukplat_irq_register(unsigned long irq, irq_handler_func_t func, void *arg);
 
+#if defined(__aarch64__) && defined(CONFIG_PLAT_XEN)
+void ukplat_irq_setup(uint64_t dist_addr, uint64_t rdist_addr,
+				uint64_t *vdist_addr, uint64_t *vrdist_adidr);
+#else
+#define ukplat_irq_setup(dist_addr, rdist_addr, vdist_addr, vrdist_addr)
+#endif
+
 #ifdef __cplusplus
 }
 #endif
