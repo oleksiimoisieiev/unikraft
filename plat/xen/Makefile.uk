@@ -13,6 +13,8 @@ $(eval $(call addplatlib_s,xen,libxenbus,$(CONFIG_XEN_XENBUS)))
 $(eval $(call addplatlib_s,xen,libxennetfront,$(CONFIG_XEN_NETFRONT)))
 $(eval $(call addplatlib_s,xen,libxenblkfront,$(CONFIG_XEN_BLKFRONT)))
 $(eval $(call addplatlib_s,xen,libxen9pfront,$(CONFIG_XEN_9PFRONT)))
+$(eval $(call addplatlib_s,xen,libxengic,$(CONFIG_LIBGIC)))
+$(eval $(call addplatlib_s,xen,libxenofw,$(CONFIG_LIBOFW)))
 
 ##
 ## Xen platform compilation settings
@@ -45,6 +47,7 @@ LIBXENPLAT_ASINCLUDES-y        += -I$(LIBXENPLAT_BASE)/include
 LIBXENPLAT_ASINCLUDES-y        += -I$(UK_PLAT_COMMON_BASE)/include
 LIBXENPLAT_CINCLUDES-y         += -I$(LIBXENPLAT_BASE)/include
 LIBXENPLAT_CINCLUDES-y         += -I$(UK_PLAT_COMMON_BASE)/include
+LIBXENPLAT_CINCLUDES-y         += -I$(UK_PLAT_DRIVERS_BASE)/include
 
 LIBXENPLAT_SRCS-y              += $(UK_PLAT_XEN_DEF_LDS)
 LIBXENPLAT_SRCS-y              += $(LIBXENPLAT_BASE)/hypervisor.c
@@ -87,11 +90,13 @@ LIBXENPLAT_SRCS-$(CONFIG_ARCH_ARM_32) += $(LIBXENPLAT_BASE)/arm/arch_time.c
 LIBXENPLAT_SRCS-$(CONFIG_ARCH_ARM_32) += $(LIBXENPLAT_BASE)/arm/hypercalls32.S
 
 LIBXENPLAT_SRCS-$(CONFIG_ARCH_ARM_64) += $(LIBXENPLAT_BASE)/arm/setup64.c
-LIBXENPLAT_SRCS-$(CONFIG_ARCH_ARM_64) += $(LIBXENPLAT_BASE)/arm/traps.c
 LIBXENPLAT_SRCS-$(CONFIG_ARCH_ARM_64) += $(LIBXENPLAT_BASE)/arm/entry64.S
 LIBXENPLAT_SRCS-$(CONFIG_ARCH_ARM_64) += $(LIBXENPLAT_BASE)/arm/arch_events.c
-LIBXENPLAT_SRCS-$(CONFIG_ARCH_ARM_64) += $(LIBXENPLAT_BASE)/arm/arch_time.c
+LIBXENPLAT_SRCS-$(CONFIG_ARCH_ARM_64) += $(LIBXENPLAT_BASE)/arm/intctrl.c
 LIBXENPLAT_SRCS-$(CONFIG_ARCH_ARM_64) += $(LIBXENPLAT_BASE)/arm/hypercalls64.S
+LIBXENPLAT_SRCS-$(CONFIG_ARCH_ARM_64) += $(UK_PLAT_COMMON_BASE)/arm/lcpu.c|arm64_common
+LIBXENPLAT_SRCS-$(CONFIG_ARCH_ARM_64) += $(UK_PLAT_COMMON_BASE)/arm/traps_arm64.c
+
 ifeq ($(CONFIG_HAVE_SMP),y)
 LIBXENPLAT_SRCS-$(CONFIG_ARCH_ARM_64) += $(UK_PLAT_COMMON_BASE)/arm/lcpu_start.S
 endif
@@ -99,6 +104,9 @@ ifeq ($(CONFIG_HAVE_SCHED),y)
 LIBXENPLAT_SRCS-$(CONFIG_ARCH_ARM_64) += $(UK_PLAT_COMMON_BASE)/arm/thread_start64.S|common
 LIBXENPLAT_SRCS-$(CONFIG_ARCH_ARM_64) += $(UK_PLAT_COMMON_BASE)/thread.c|common
 LIBXENPLAT_SRCS-$(CONFIG_ARCH_ARM_64) += $(UK_PLAT_COMMON_BASE)/sw_ctx.c|common
+endif
+ifeq ($(CONFIG_UKPLAT_ALLOW_GIC),y)
+LIBXENPLAT_SRCS-$(CONFIG_ARCH_ARM_64) += $(LIBXENPLAT_BASE)/arm/irq.c
 endif
 
 
@@ -117,6 +125,32 @@ ifeq ($(CONFIG_XEN_GNTTAB),y)
 LIBXENPLAT_SRCS-y              += $(LIBXENPLAT_BASE)/gnttab.c
 LIBXENPLAT_SRCS-$(CONFIG_ARCH_X86_64) += $(LIBXENPLAT_BASE)/x86/gnttab.c|x86
 LIBXENPLAT_SRCS-$(CONFIG_ARCH_ARM_64) += $(LIBXENPLAT_BASE)/arm/gnttab.c|arm64
+endif
+
+##
+## OFW library definitions
+##
+LIBXENOFW_CINCLUDES-y         += -I$(LIBXENPLAT_BASE)/include
+LIBXENOFW_CINCLUDES-y         += -I$(UK_PLAT_COMMON_BASE)/include
+LIBXENOFW_CINCLUDES-y         += -I$(UK_PLAT_DRIVERS_BASE)/include
+
+LIBXENOFW_SRCS-y                += $(UK_PLAT_DRIVERS_BASE)/ofw/fdt.c
+LIBXENOFW_SRCS-$(CONFIG_LIBGIC) += $(UK_PLAT_DRIVERS_BASE)/ofw/gic_fdt.c
+
+##
+## GIC library definitions
+##
+ifeq ($(findstring y,$(CONFIG_LIBGIC)),y)
+LIBXENGIC_CINCLUDES-y         += -I$(LIBXENPLAT_BASE)/include
+LIBXENGIC_CINCLUDES-y         += -I$(UK_PLAT_COMMON_BASE)/include
+LIBXENGIC_CINCLUDES-y         += -I$(UK_PLAT_DRIVERS_BASE)/include
+LIBXENGIC_SRCS-y += $(UK_PLAT_DRIVERS_BASE)/gic/gic-common.c
+ifeq ($(findstring y,$(CONFIG_LIBGICV2)),y)
+LIBXENGIC_SRCS-y += $(UK_PLAT_DRIVERS_BASE)/gic/gic-v2.c
+endif
+ifeq ($(findstring y,$(CONFIG_LIBGICV3)),y)
+LIBXENGIC_SRCS-y += $(UK_PLAT_DRIVERS_BASE)/gic/gic-v3.c
+endif
 endif
 
 ifeq ($(CONFIG_XEN_XENBUS),y)

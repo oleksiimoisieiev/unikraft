@@ -157,12 +157,6 @@ config RTC_PL031
        default y if ARCH_ARM_64
        depends on ARCH_ARM_64
 
-config LIBOFW
-       bool "Open Firmware library support"
-       default n
-       depends on ARCH_ARM_64
-       select LIBFDT
-
 config UKPLAT_ALLOW_GIC
 	bool
 	default y

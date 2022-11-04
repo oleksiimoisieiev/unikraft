@@ -551,6 +551,9 @@ static int gicv3_do_probe(const void *fdt)
 		return r;
 	}
 
+	ukplat_irq_setup(gicv3_drv.dist_mem_addr, gicv3_drv.rdist_mem_addr,
+				&gicv3_drv.dist_mem_addr, &gicv3_drv.rdist_mem_addr);
+
 	uk_pr_info("Found GICv3 on:\n");
 	uk_pr_info("\tDistributor  : 0x%lx - 0x%lx\n",
 		gicv3_drv.dist_mem_addr,
