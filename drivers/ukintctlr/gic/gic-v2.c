@@ -597,6 +597,20 @@ static int gicv2_do_probe(void)
 		return r;
 	}
 
+	ukplat_irq_setup(gicv2_drv.dist_mem_addr, gicv2_drv.cpuif_mem_addr,
+			 &gicv2_drv.dist_mem_addr, &gicv2_drv.cpuif_mem_addr);
+
+	uk_pr_info("Found GICv2 on:\n");
+	uk_pr_info("\tDistributor  : 0x%lx - 0x%lx\n",
+		   gicv2_drv.dist_mem_addr,
+		   gicv2_drv.dist_mem_addr + gicv2_drv.dist_mem_size - 1);
+	uk_pr_info("\tCPU interface: 0x%lx - 0x%lx\n",
+		   gicv2_drv.cpuif_mem_addr,
+		   gicv2_drv.cpuif_mem_addr + gicv2_drv.cpuif_mem_size - 1);
+
+	/* GICv2 is present */
+	gicv2_drv.is_present = 1;
+
 	return 0;
 }
 #endif /* !CONFIG_UKPLAT_ACPI */

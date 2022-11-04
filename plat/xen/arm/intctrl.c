@@ -1,8 +1,8 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /*
- * Authors: Simon Kuenzer <simon.kuenzer@neclab.eu>
+ * Authors: Wei Chen <wei.chen@arm.com>
  *
- * Copyright (c) 2018, NEC Europe Ltd., NEC Corporation. All rights reserved.
+ * Copyright (c) 2018, Arm Ltd., All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -29,57 +29,55 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
+/* Moved from Mini-OS */
 
-#ifndef __UK_SWRAND__
-#define __UK_SWRAND__
+#include <uk/assert.h>
+#include <xen/intctrl.h>
+#include <arm/cpu.h>
+#include <arm/irq.h>
+#include <gic/gic.h>
+#include <uk/essentials.h>
 
-#include <sys/types.h>
-#include <uk/arch/types.h>
-#include <uk/plat/lcpu.h>
-#include <uk/config.h>
-#include <uk/plat/time.h>
+/** Corresponding driver for GIC present on the hardware */
+struct _gic_dev *gic;
+extern void *HYPERVISOR_dtb;
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-#define UK_SWRAND_CTOR_PRIO	1
-
-struct uk_swrand;
-
-extern struct uk_swrand uk_swrand_def;
-
-void uk_swrand_init_r(struct uk_swrand *r, unsigned int seedc,
-			const __u32 seedv[]);
-__u32 uk_swrand_randr_r(struct uk_swrand *r);
-
-__u32 uk_swrandr_gen_seed32(void);
-/* Uses the pre-initialized default generator  */
-/* TODO: Add assertion when we can test if we are in interrupt context */
-/* TODO: Revisit with multi-CPU support */
-static inline __u32 uk_swrand_randr(void)
+void intctrl_init(void)
 {
-	unsigned long iflags;
-	__u32 ret;
+	int rc;
 
-	iflags = ukplat_lcpu_save_irqf();
-	ret = uk_swrand_randr_r(&uk_swrand_def);
-	ukplat_lcpu_restore_irqf(iflags);
+	/* Initialize GIC from DTB */
+	rc = init_gic(&gic);
+	if (unlikely(rc))
+		goto EXIT_ERR;
 
-	return ret;
+	/* Initialize GIC */
+	rc = gic->ops.initialize();
+	if (unlikely(rc))
+		goto EXIT_ERR;
+
+	return;
+
+EXIT_ERR:
+	UK_CRASH("Initialize GIC from DTB failed (code: %d)!\n", rc);
 }
 
-ssize_t uk_swrand_fill_buffer(void *buf, size_t buflen);
-
-#if defined(__aarch64__) && defined(CONFIG_PLAT_XEN)
-void ukplat_irq_setup(uint64_t dist_addr, uint64_t rdist_addr,
-				uint64_t *vdist_addr, uint64_t *vrdist_adidr);
-#else
-#define ukplat_irq_setup(dist_addr, rdist_addr, vdist_addr, vrdist_addr)
-#endif
-
-#ifdef __cplusplus
+void intctrl_ack_irq(unsigned int irq __unused)
+{
+	gic->ops.ack_irq();
 }
-#endif
 
-#endif /* __UK_SWRAND__ */
+void intctrl_mask_irq(unsigned int irq)
+{
+	gic->ops.disable_irq(irq);
+}
+
+void intctrl_clear_irq(unsigned int irq)
+{
+	gic->ops.enable_irq(irq);
+}
+
+void intctrl_send_ipi(uint8_t sgintid, uint32_t cpuid)
+{
+	gic->ops.gic_sgi_gen(sgintid, cpuid);
+}

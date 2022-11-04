@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /*
- * Authors: Simon Kuenzer <simon.kuenzer@neclab.eu>
+ * Authors: Costin Lupu <costin.lupu@cs.pub.ro>
  *
  * Copyright (c) 2018, NEC Europe Ltd., NEC Corporation. All rights reserved.
  *
@@ -30,56 +30,8 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef __UK_SWRAND__
-#define __UK_SWRAND__
-
-#include <sys/types.h>
-#include <uk/arch/types.h>
-#include <uk/plat/lcpu.h>
-#include <uk/config.h>
-#include <uk/plat/time.h>
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-#define UK_SWRAND_CTOR_PRIO	1
-
-struct uk_swrand;
-
-extern struct uk_swrand uk_swrand_def;
-
-void uk_swrand_init_r(struct uk_swrand *r, unsigned int seedc,
-			const __u32 seedv[]);
-__u32 uk_swrand_randr_r(struct uk_swrand *r);
-
-__u32 uk_swrandr_gen_seed32(void);
-/* Uses the pre-initialized default generator  */
-/* TODO: Add assertion when we can test if we are in interrupt context */
-/* TODO: Revisit with multi-CPU support */
-static inline __u32 uk_swrand_randr(void)
-{
-	unsigned long iflags;
-	__u32 ret;
-
-	iflags = ukplat_lcpu_save_irqf();
-	ret = uk_swrand_randr_r(&uk_swrand_def);
-	ukplat_lcpu_restore_irqf(iflags);
-
-	return ret;
-}
-
-ssize_t uk_swrand_fill_buffer(void *buf, size_t buflen);
-
-#if defined(__aarch64__) && defined(CONFIG_PLAT_XEN)
-void ukplat_irq_setup(uint64_t dist_addr, uint64_t rdist_addr,
-				uint64_t *vdist_addr, uint64_t *vrdist_adidr);
-#else
-#define ukplat_irq_setup(dist_addr, rdist_addr, vdist_addr, vrdist_addr)
-#endif
-
-#ifdef __cplusplus
-}
-#endif
-
-#endif /* __UK_SWRAND__ */
+void intctrl_init(void);
+void intctrl_clear_irq(unsigned int irq);
+void intctrl_mask_irq(unsigned int irq);
+void intctrl_ack_irq(unsigned int irq);
+void intctrl_send_ipi(uint8_t sgintid, uint32_t cpuid);
