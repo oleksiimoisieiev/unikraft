@@ -64,13 +64,12 @@ typedef unsigned long u_long;
 void arch_fini(void);
 void timer_handler(evtchn_port_t port, struct pt_regs *regs, void *ign);
 
-#define BUG() while(1){asm volatile (".word 0xe7f000f0\n");}
+#define BUG() while (1) {asm volatile (".word 0xe7f000f0\n");}
 
 #define smp_processor_id() 0
 
 extern void *HYPERVISOR_dtb;
 extern shared_info_t *HYPERVISOR_shared_info;
-
 
 #if defined(__arm__)
 // disable interrupts

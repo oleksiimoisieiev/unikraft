@@ -61,7 +61,7 @@ extern paddr_t _libxenplat_paddr_offset;
 
 #define SZ_2M           0x00200000
 
-#define PAGE_OFFSET     (0xffffffffffffffff << (VA_BITS - 1)) & 0xffffffffffffffff
+#define PAGE_OFFSET     ((0xffffffffffffffff << (VA_BITS - 1)) & 0xffffffffffffffff)
 #define FIX_FDT_TOP     (PAGE_OFFSET)
 #define FIX_FDT_START   (FIX_FDT_TOP - SZ_2M)
 #define FIX_CON_TOP     (FIX_FDT_START)
