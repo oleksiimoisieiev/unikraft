@@ -286,11 +286,11 @@ void _libxenplat_armentry(void *dtb_pointer, paddr_t physical_offset)
 		BUG();
 	HYPERVISOR_shared_info = (struct shared_info *)shared_info_page;
 
-	/* Set up events. */
-	init_events();
-
 	/* Initialize interrupt controller */
 	intctrl_init();
+
+	/* Set up events. */
+	init_events();
 	/* Initialize logical boot CPU */
 	r = lcpu_init(lcpu_get_bsp());
 	if (unlikely(r))
