@@ -72,13 +72,6 @@ smccc_conduit_fn_t smccc_psci_call;
 unsigned int _libxenplat_mrd_num;
 struct ukplat_memregion_desc _libxenplat_mrd[UKPLAT_MEMRD_MAX_ENTRIES];
 
-static inline void set_pgt_entry(lpae_t *ptr, lpae_t val)
-{
-	*ptr = val;
-	dsb(ishst);
-	isb();
-}
-
 static int hvm_get_parameter(int idx, uint64_t *value)
 {
 	struct xen_hvm_param xhv;
