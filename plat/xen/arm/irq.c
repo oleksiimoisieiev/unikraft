@@ -61,13 +61,6 @@ extern lpae_t fixmap_pgtable[512];
 static struct irq_handler irq_handlers[__MAX_IRQ]
 				      [CONFIG_XEN_MAX_IRQ_HANDLER_ENTRIES];
 
-static inline void set_pgt_entry(lpae_t *ptr, lpae_t val)
-{
-	*ptr = val;
-	dsb(ishst);
-	isb();
-}
-
 static inline struct irq_handler *allocate_handler(unsigned long irq)
 {
 	UK_ASSERT(irq < __MAX_IRQ);
