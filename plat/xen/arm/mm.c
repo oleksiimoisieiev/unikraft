@@ -18,7 +18,7 @@ unsigned long allocate_ondemand(unsigned long n, unsigned long alignment)
 	BUG();
 }
 
-static inline void set_pgt_entry(lpae_t *ptr, lpae_t val)
+inline void set_pgt_entry(lpae_t *ptr, lpae_t val)
 {
 	*ptr = val;
 	dsb(ishst);
