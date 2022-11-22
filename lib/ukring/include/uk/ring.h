@@ -321,10 +321,10 @@ uk_ring_peek_clear_sc(struct uk_ring *br)
 	if (br->br_cons_head == br->br_prod_tail)
 		return NULL;
 
-#if defined(CONFIG_ARCH_ARM_32) || defined(CONFIG_ARCH_ARM_64)
+#if defined(CONFIG_ARCH_ARM_32)
 	/*
 	 * The barrier is required there on ARM and ARM64 to ensure, that
-	 * br->br_ring[br->br_cons_head] will not be fetched before the above
+	 * br->br_risung[br->br_cons_head] will not be fetched before the above
 	 * condition is checked.
 	 * Without the barrier, it is possible, that buffer will be fetched
 	 * before the enqueue will put mbuf into br, then, in the meantime, the
@@ -334,6 +334,8 @@ uk_ring_peek_clear_sc(struct uk_ring *br)
 	 */
 	#error "unsupported: atomic_thread_fence_acq()"
 	/* TODO atomic_thread_fence_acq(); */
+#elif defined(CONFIG_ARCH_ARM64)
+	ukarch_thread_fence_acq();
 #endif
 
 #ifdef DEBUG_BUFRING
