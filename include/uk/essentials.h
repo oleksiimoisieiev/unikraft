@@ -110,6 +110,11 @@ extern "C" {
 #define __alias(old, new) \
 	extern __typeof(old) new __attribute__((alias(#old)))
 #endif
+
+#ifndef __aligned
+#define __aligned(x) __attribute__((__aligned__(x)))
+#endif
+
 /* NOTE: weak aliasing does not work well with link-time optimization
  * currently. Hopefully this will be fixed in gcc 9. The problem is,
  * if a weak symbol is referenced in the library, gcc resolves calls
