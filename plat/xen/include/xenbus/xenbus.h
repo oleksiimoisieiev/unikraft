@@ -50,6 +50,7 @@ typedef enum xenbus_dev_type {
 	xenbus_dev_vif,
 	xenbus_dev_vbd,
 	xenbus_dev_9pfs,
+	xenbus_dev_pvcalls,
 } xenbus_dev_type_t;
 
 struct xenbus_device;

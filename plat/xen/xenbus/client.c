@@ -75,6 +75,7 @@ static const char *const xb_devtype_tbl[] = {
 	XENBUS_DEVTYPE_ENTRY(vif),
 	XENBUS_DEVTYPE_ENTRY(vbd),
 	XENBUS_DEVTYPE_ENTRY(9pfs),
+	XENBUS_DEVTYPE_ENTRY(pvcalls),
 };
 
 const char *xenbus_devtype_to_str(enum xenbus_dev_type devtype)
