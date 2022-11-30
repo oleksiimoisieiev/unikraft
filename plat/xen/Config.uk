@@ -99,6 +99,12 @@ config XEN_NETFRONT
 	help
 		Driver for netfront devices
 
+config XEN_PVCALLS
+	bool "Xenbus Pvcalls Driver"
+	default n
+	help
+		Driver for pvcalls
+
 menuconfig XEN_BLKFRONT
 	bool "Xenbus Blkfront Driver"
 	default y if LIBUKBLKDEV
