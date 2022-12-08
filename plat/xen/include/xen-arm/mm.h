@@ -179,6 +179,8 @@ extern paddr_t _libxenplat_paddr_offset;
 #define PAGE_SHIFT      __PAGE_SHIFT
 #define PAGE_SIZE       __PAGE_SIZE
 #define PAGE_MASK       __PAGE_MASK
+/* to align the pointer to the (next) page boundary */
+#define PAGE_ALIGN(addr) (((addr) + PAGE_SIZE - 1) & PAGE_MASK)
 
 #define L1_PAGETABLE_SHIFT      12
 
