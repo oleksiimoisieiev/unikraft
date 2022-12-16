@@ -76,10 +76,12 @@
 
 #define __XEN_CONSOLE_IMPL__
 #include "emg_console.h"
-
+extern void clean_and_invalidate_dcache_range(const char *buf, unsigned int len);
 int emg_console_output(const char *str, unsigned int len)
 {
 	int rc;
+
+	clean_and_invalidate_dcache_range(str, len);
 
 	rc = HYPERVISOR_console_io(CONSOLEIO_write, len, DECONST(char *, str));
 	if (unlikely(rc < 0))
