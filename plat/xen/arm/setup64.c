@@ -207,15 +207,17 @@ static inline void _dtb_init_mem(paddr_t physical_offset)
 	void *new_dtb;
 	paddr_t start_pfn_p;
 	paddr_t max_pfn_p;
+	uk_pr_debug("===== %s %d\n", __func__, __LINE__);
 
 	/* init physical address offset gathered by entry32.S */
 	_libxenplat_paddr_offset = physical_offset;
-
+	uk_pr_debug("===== %s %d\n", __func__, __LINE__);
 	arch_mm_prepare(&start_pfn_p, &max_pfn_p);
 
 	/* The device tree is probably in memory that we're about to hand over
 	 * to the page allocator, so move it to the end and reserve that space.
 	 */
+	uk_pr_debug("===== %s %d\n", __func__, __LINE__);
 	fdt_size = fdt_totalsize(HYPERVISOR_dtb);
 	new_dtb = to_virt(((max_pfn_p << __PAGE_SHIFT) - fdt_size)
 					  & __PAGE_MASK);
@@ -223,8 +225,9 @@ static inline void _dtb_init_mem(paddr_t physical_offset)
 		memmove(new_dtb, HYPERVISOR_dtb, fdt_size);
 	HYPERVISOR_dtb = new_dtb;
 	max_pfn_p = to_phys(new_dtb) >> __PAGE_SHIFT;
+	uk_pr_debug("===== %s %d\n", __func__, __LINE__);
 
-	arch_mm_prepare(&start_pfn_p, &max_pfn_p);
+	uk_pr_debug("===== %s %d\n", __func__, __LINE__);
 	/* Fill out mrd array
 	 */
 	/* heap */
@@ -243,6 +246,7 @@ static inline void _dtb_init_mem(paddr_t physical_offset)
 #if CONFIG_UKPLAT_MEMRNAME
 	_libxenplat_mrd[1].name  = "dtb";
 #endif
+	uk_pr_debug("===== %s %d\n", __func__, __LINE__);
 	_libxenplat_mrd_num = 2;
 }
 

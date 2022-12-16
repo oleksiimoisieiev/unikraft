@@ -83,6 +83,7 @@ void arch_mm_prepare(unsigned long *start_pfn_p, unsigned long *max_pfn_p)
 	uint64_t mem_size;
 	uint64_t heap_len;
 	const uint64_t *regs;
+	uk_pr_debug("===== %s %d\n", __func__, __LINE__);
 
 	uk_pr_debug("    _text: %p(VA)\n", &_text);
 	uk_pr_debug("    _etext: %p(VA)\n", &_etext);
@@ -90,6 +91,7 @@ void arch_mm_prepare(unsigned long *start_pfn_p, unsigned long *max_pfn_p)
 	uk_pr_debug("    _edata: %p(VA)\n", &_edata);
 	uk_pr_debug("    stack start: %p(VA)\n", stack);
 	uk_pr_debug("    _end: %p(VA)\n", &_end);
+	uk_pr_debug("===== %s %d\n", __func__, __LINE__);
 
 	if (fdt_num_mem_rsv(HYPERVISOR_dtb) != 0)
 		uk_pr_warn("WARNING: reserved memory not supported!\n");
@@ -103,11 +105,13 @@ void arch_mm_prepare(unsigned long *start_pfn_p, unsigned long *max_pfn_p)
 		BUG();
 	}
 
+
 	/*
 	 * Xen will always provide us at least one bank of memory.
 	 * unikraft will use the first bank for the time-being.
 	 */
 	regs = fdt_getprop(HYPERVISOR_dtb, memory, "reg", &prop_len);
+	uk_pr_debug("===== %s %d regs = %lx\n", __func__, __LINE__, (unsigned long)regs);
 
 	/*
 	 * The property must contain at least the start address
