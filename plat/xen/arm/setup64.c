@@ -224,7 +224,6 @@ static inline void _dtb_init_mem(paddr_t physical_offset)
 	HYPERVISOR_dtb = new_dtb;
 	max_pfn_p = to_phys(new_dtb) >> __PAGE_SHIFT;
 
-	arch_mm_prepare(&start_pfn_p, &max_pfn_p);
 	/* Fill out mrd array
 	 */
 	/* heap */
