@@ -101,7 +101,7 @@ static xen_pfn_t map_console(xen_pfn_t mfn)
 	uk_pr_debug("%s, phys = 0x%lx\n", __func__, phys);
 
 	set_pgt_entry(&fixmap_pgtable[l2_pgt_idx(FIX_CON_START)],
-				  ((phys & L2_MASK) | BLOCK_DEV_ATTR | L2_BLOCK));
+				  ((phys & L2_MASK) | BLOCK_DEF_ATTR | L2_BLOCK));
 
 	return (xen_pfn_t) (FIX_CON_START + (phys & L2_OFFSET));
 }
@@ -114,7 +114,7 @@ static xen_pfn_t map_xenbus(xen_pfn_t mfn)
 	uk_pr_debug("%s, phys = 0x%lx\n", __func__, phys);
 
 	set_pgt_entry(&fixmap_pgtable[l2_pgt_idx(FIX_XS_START)],
-				  ((phys & L2_MASK) | BLOCK_DEV_ATTR | L2_BLOCK));
+				  ((phys & L2_MASK) | BLOCK_DEF_ATTR | L2_BLOCK));
 
 	return (xen_pfn_t) (FIX_XS_START + (phys & L2_OFFSET));
 }
