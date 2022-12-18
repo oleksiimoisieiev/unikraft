@@ -99,8 +99,8 @@ void ukplat_irq_setup(uint64_t dist_addr, uint64_t rdist_addr,
 		      uint64_t *vdist_addr, uint64_t *vrdist_addr)
 {
 #if defined(__arm__)
-	*vdist_addr = to_virt((long) fdt64_to_cpu(dist_addr));
-	*vrdist_addr = to_virt((long) fdt64_to_cpu(rdist_addr));
+	*vdist_addr = to_virt((long) fdt64_ld(dist_addr));
+	*vrdist_addr = to_virt((long) fdt64_ld(rdist_addr));
 #else
 	set_pgt_entry(&fixmap_pgtable[l2_pgt_idx(FIX_GIC_START)],
 		      ((dist_addr & L2_MASK) | BLOCK_DEV_ATTR | L2_BLOCK));
