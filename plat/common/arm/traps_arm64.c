@@ -156,8 +156,8 @@ static void dump_registers(struct __regs *regs, __u64 far)
 	int idx;
 
 	uk_pr_crit("\t SP       : 0x%016lx\n", regs->sp);
-	uk_pr_crit("\t ESR_EL1  : 0x%016lx\n", regs->esr_el1);
-	uk_pr_crit("\t ELR_EL1  : 0x%016lx\n", regs->elr_el1);
+	uk_pr_crit("\t SPSR_EL1  : 0x%016lx\n", regs->esr_el1);
+	uk_pr_crit("\t ELR_EL1  : 0x%016lx\n", regs->spsr_el1);
 	uk_pr_crit("\t LR (x30) : 0x%016lx\n", regs->lr);
 	uk_pr_crit("\t PSTATE   : 0x%016lx\n", regs->spsr_el1);
 	uk_pr_crit("\t FAR_EL1  : 0x%016lx\n", far);
