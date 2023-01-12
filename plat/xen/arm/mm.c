@@ -21,6 +21,7 @@ unsigned long allocate_ondemand(unsigned long n, unsigned long alignment)
 inline void set_pgt_entry(lpae_t *ptr, lpae_t val)
 {
 	*ptr = val;
+	uk_pr_debug("   set_gpt_entry %p (phys: %lx): %lx\n", ptr, to_phys(ptr), val);
 	dsb(ishst);
 	isb();
 }
@@ -40,6 +41,7 @@ static void alloc_init_pud(lpae_t *pgd, unsigned long vaddr,
 
 	pud = (lpae_t *)to_virt((*pgd) & ~ATTR_MASK_L) + l2_pgt_idx(vaddr);
 	do {
+		uk_pr_debug("VA: %lx PA: %xl\n", vaddr, phys);
 		set_pgt_entry(pud, (phys & L2_MASK) | BLOCK_DEF_ATTR | L2_BLOCK);
 		vaddr += L2_SIZE;
 		phys += L2_SIZE;
