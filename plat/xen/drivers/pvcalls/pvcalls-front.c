@@ -618,6 +618,17 @@ int pvcalls_front_connect(struct posix_socket_file *sock, struct sockaddr *addr,
 	return ret;
 }
 
+static inline void ukarch_tlb_flush(void)
+{
+	__asm__ __volatile__(
+	    "	dsb	ishst\n"     /* wait for write complete */
+	    "	tlbi	vmalle1is\n" /* invalidate all */
+	    "	dsb	ish\n"	     /* wait for invalidate complete */
+	    "	isb\n"		     /* sync context */
+	    ::
+		: "memory");
+}
+
 static int __write_ring(struct pvcalls_data_intf *intf,
 			struct pvcalls_data *data,
 			void *mem, ssize_t len)
@@ -635,6 +646,8 @@ static int __write_ring(struct pvcalls_data_intf *intf,
 	mb();
 
 	size = pvcalls_queued(prod, cons, array_size);
+	uk_pr_err("prod = %d cons = %d size = %d array_size = %d\n",
+			  prod, cons, size, array_size);
 	if (size > array_size)
 		return -EINVAL;
 	if (size == array_size)
@@ -662,8 +675,13 @@ static int __write_ring(struct pvcalls_data_intf *intf,
 
 	/* write to ring before updating pointer */
 	wmb();
+	uk_pr_err("baaa len = %d\n", len);
 	intf->out_prod += len;
-
+	clean_and_invalidate_dcache_range(intf, 2048);
+	clean_and_invalidate_dcache_range(data->out, 2048);
+	ukarch_tlb_flush();
+	wmb();
+	uk_pr_err(" Addr = %p out_prod = %d\n", intf, intf->out_prod);
 	return len;
 }
 
@@ -697,6 +715,7 @@ int pvcalls_front_sendmsg(struct posix_socket_file *sock,
 		if (sent > 0) {
 			len -= sent;
 			tot_sent += sent;
+			uk_pr_err("notify sent = %d\n", sent);
 			notify_remote_via_evtchn(map->active.evtchn);
 		}
 		if (sent >= 0 && len > 0 && i < PVCALLS_FRONT_MAX_SPIN)
