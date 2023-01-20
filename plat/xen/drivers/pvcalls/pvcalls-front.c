@@ -692,7 +692,7 @@ int pvcalls_front_sendmsg(struct posix_socket_file *sock,
 		len = INT_MAX;
 
 	for (i = 0; i < msg->msg_iovlen; i++) {
-		sent = __write_ring(map->active.ring, &map->active.data + sent, msg->msg_iov[i].iov_base,
+		sent = __write_ring(map->active.ring, &map->active.data, msg->msg_iov[i].iov_base,
 							msg->msg_iov[i].iov_len);
 		if (sent > 0) {
 			len -= sent;
