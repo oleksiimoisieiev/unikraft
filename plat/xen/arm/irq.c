@@ -42,7 +42,7 @@
 #include <stdint.h>
 #include <xen-arm/os.h>
 #include <xen-arm/mm.h>
-#include <xen/intctrl.h>
+#include <uk/intctrl.h>
 #include <common/hypervisor.h>
 #include <libfdt.h>
 #include <uk/bitops.h>

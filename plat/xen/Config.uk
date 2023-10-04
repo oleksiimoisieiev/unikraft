@@ -10,7 +10,9 @@ menuconfig PLAT_XEN
        select LIBFDT if (ARCH_ARM_32 || ARCH_ARM_64)
        select XEN_DBGEMERGENCY if ARCH_ARM_32
        select LIBUKRELOC if OPTIMIZE_PIE
-       help
+       select LIBUKOFW if ARCH_ARM_64
+       select HAVE_INTCTLR
+      help
                 Create a Unikraft image that runs as a Xen guest
 
 if (PLAT_XEN)
@@ -156,13 +158,4 @@ config XEN_9PFRONT_RING_ORDER
 		create rings of size 4K, 8K, 16K, ..., 2M respectively.
 		Will be clamped to the maximum value allowed by the backend.
 endmenu
-
-config UKPLAT_ALLOW_GIC
-	bool
-	default y
-
-config XEN_MAX_IRQ_HANDLER_ENTRIES
-	int "Maximum number of handlers per IRQ"
-	default 8
-	depends on (ARCH_X86_64 || ARCH_ARM_64)
 endif

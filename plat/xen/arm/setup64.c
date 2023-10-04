@@ -33,11 +33,10 @@
 #include <xen/xen.h>
 #include <uk/plat/memory.h>
 #include <xen/memory.h>
-#include <xen/intctrl.h>
+#include <uk/intctlr.h>
 #include <xen/hvm/params.h>
 #include <libfdt.h>
 #include <xen-arm/setup.h>
-#include <gic/gic.h>
 #include <uk/plat/common/lcpu.h>
 #include <uk/plat/common/bootinfo.h>
 
@@ -257,7 +256,8 @@ static int _init_mem(struct ukplat_bootinfo *const bi, paddr_t physical_offset)
 	if (rc < 0)
 		return rc;
 
-	return ukplat_memregion_list_coalesce(&bi->mrds);
+	ukplat_memregion_list_coalesce(&bi->mrds);
+	return 0;
 }
 
 /*
@@ -304,7 +304,9 @@ void _libxenplat_armentry(void *dtb_pointer, paddr_t physical_offset)
 	HYPERVISOR_shared_info = (struct shared_info *)shared_info_page;
 
 	/* Initialize interrupt controller */
-	intctrl_init();
+	r = uk_intctlr_probe();
+	if (unlikely(r))
+		UK_CRASH("Could not initialize the IRQ controller: %d\n", r);
 
 	/* Set up events. */
 	init_events();

@@ -29,7 +29,7 @@
 #include <uk/print.h>
 #include <uk/assert.h>
 #include <uk/essentials.h>
-#include <uk/plat/irq.h>
+#include <uk/intctlr.h>
 #include <uk/plat/lcpu.h>
 
 //TODO read it from device tree
@@ -60,7 +60,7 @@ void arch_init_events(void)
 	unmask_evtchn(debug_port);
 
 	/* Register the events interrupt handlers */
-	rc = ukplat_irq_register(EVENT_IRQ, arch_events_irq_handler, NULL);
+	rc = uk_intctlr_irq_register(EVENT_IRQ, arch_events_irq_handler, NULL);
 	if (unlikely(rc)) {
 		uk_pr_crit("Could not register handler for EVENTS IRQ %d\n",
 			   EVENT_IRQ);

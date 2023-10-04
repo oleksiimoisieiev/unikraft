@@ -51,7 +51,6 @@
 #include <xen-x86/irq.h>
 #elif defined(__aarch64__)
 #include <xen-arm/mm.h>
-#include <uk/plat/irq.h>
 #else
 #error "Unsupported architecture"
 #endif
